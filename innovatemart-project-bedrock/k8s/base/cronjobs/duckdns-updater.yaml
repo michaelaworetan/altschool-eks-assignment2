@@ -1,0 +1,78 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: duckdns-updater
+  namespace: retail-store
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: duckdns-updater
+          containers:
+          - name: duckdns-updater
+            image: curlimages/curl:latest
+            env:
+            - name: DUCKDNS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: duckdns-secret
+                  key: token
+            - name: DUCKDNS_DOMAIN
+              value: "innovatemarts"
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # Get node IP from Kubernetes API
+              NODE_IP=$(wget -qO- --header="Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+                --ca-certificate=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                "https://kubernetes.default.svc/api/v1/nodes" | \
+                grep -o '"addresses":\[{"address":"[^"]*","type":"ExternalIP"' | \
+                head -1 | cut -d'"' -f4)
+              
+              if [ -n "$NODE_IP" ]; then
+                echo "Updating DuckDNS with IP: $NODE_IP"
+                curl "https://www.duckdns.org/update?domains=$DUCKDNS_DOMAIN&token=$DUCKDNS_TOKEN&ip=$NODE_IP"
+              else
+                echo "Could not get node IP"
+              fi
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: duckdns-updater
+  namespace: retail-store
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-reader
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: duckdns-updater-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-reader
+subjects:
+- kind: ServiceAccount
+  name: duckdns-updater
+  namespace: retail-store
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: duckdns-secret
+  namespace: retail-store
+type: Opaque
+stringData:
+  token: "YOUR_DUCKDNS_TOKEN_HERE"

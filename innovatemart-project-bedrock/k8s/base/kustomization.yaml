@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespaces/retail-store.yaml
+  - config/external-secrets/catalog-db-secret.yaml
+  - config/external-secrets/orders-db-secret.yaml
+  - config/external-secrets/carts-ddb-secret.yaml
+  - services/ui-nodeport.yaml
+  - rbac/read-only-binding.yaml
+  - deployments/ui.yaml
+  - deployments/catalog.yaml
+  - deployments/orders.yaml
+  - deployments/carts.yaml
+  - services/ui-svc.yaml
+  - services/catalog-svc.yaml
+  - services/orders-svc.yaml
+  - services/carts-svc.yaml
+  # Ingress is managed by Terraform in operators env when enabled; left out to avoid duplication
+  # - ingress/ui-alb-ingress.yaml

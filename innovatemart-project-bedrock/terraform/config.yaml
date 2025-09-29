@@ -1,0 +1,34 @@
+# Global Project Configuration
+# Purpose: Single source of truth for all project settings
+
+project:
+  name: "innovatemart"
+  owner: "maworetan"
+  environment: "sandbox"
+  
+aws:
+  region: "eu-west-1"
+  
+naming:
+  cluster_name: "innovatemart-sandbox"
+  vpc_name: "innovatemart-vpc"
+  s3_bucket: "innovatemart-terraform-state-eu-west-1-ma2025"
+  dynamodb_table: "innovatemart-terraform-locks"
+  developer_user: "innovatemart-dev-readonly"
+  secret_store: "innovatemart-cluster-secret-store"
+
+kubernetes:
+  namespace: "retail-store"
+  version: "1.33"
+
+cost_optimization:
+  node_instance_type: "t4g.small"
+  rds_instance_class: "db.t4g.micro"
+  backup_retention_days: 0
+  desired_capacity: 1
+  min_size: 1
+  max_size: 1
+
+security:
+  enable_encryption: true
+  enable_versioning: true

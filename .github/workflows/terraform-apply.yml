@@ -1,0 +1,122 @@
+name: Terraform Apply
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'innovatemart-project-bedrock/terraform/**'
+      - 'innovatemart-project-bedrock/k8s/**'
+      - 'innovatemart-project-bedrock/scripts/**'
+      - '.github/workflows/terraform-apply.yml'
+
+concurrency:
+  group: terraform-apply
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
+jobs:
+  detect:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      tf: ${{ steps.changes.outputs.tf }}
+      k8s: ${{ steps.changes.outputs.k8s }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Paths filter
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            tf:
+              - 'innovatemart-project-bedrock/terraform/**'
+              - '.github/workflows/terraform-apply.yml'
+            k8s:
+              - 'innovatemart-project-bedrock/k8s/**'
+              - 'innovatemart-project-bedrock/scripts/**'
+
+  apply:
+    name: Terraform apply (sandbox and operators)
+    runs-on: ubuntu-latest
+    needs: detect
+    if: needs.detect.outputs.tf == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Who am I (AWS)
+        run: |
+          aws sts get-caller-identity
+          echo "AWS_REGION=${AWS_REGION}"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.6
+
+      - name: Terraform Init (sandbox)
+        working-directory: innovatemart-project-bedrock/terraform/envs/sandbox
+        run: terraform init -input=false
+
+      - name: Terraform Apply (sandbox)
+        working-directory: innovatemart-project-bedrock/terraform/envs/sandbox
+        run: terraform apply -input=false -auto-approve
+
+      - name: Terraform Init (operators)
+        working-directory: innovatemart-project-bedrock/terraform/envs/operators
+        run: terraform init -input=false
+
+      - name: Terraform Apply (operators)
+        working-directory: innovatemart-project-bedrock/terraform/envs/operators
+        run: terraform apply -input=false -auto-approve
+
+  deploy:
+    name: Kubernetes deploy (post-apply)
+    runs-on: ubuntu-latest
+    needs: [detect, apply]
+    if: >-
+      always() &&
+      (
+        needs.detect.outputs.tf == 'true' || needs.detect.outputs.k8s == 'true'
+      ) &&
+      (
+        needs.detect.outputs.tf != 'true' || needs.apply.result == 'success'
+      )
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.33.0"
+
+      - name: Generate kubeconfig
+        run: |
+          chmod +x innovatemart-project-bedrock/terraform/scripts/generate-kubeconfig.sh
+          innovatemart-project-bedrock/terraform/scripts/generate-kubeconfig.sh
+
+      - name: Deploy to Kubernetes
+        run: |
+          chmod +x innovatemart-project-bedrock/scripts/deploy-app.sh
+          innovatemart-project-bedrock/scripts/deploy-app.sh

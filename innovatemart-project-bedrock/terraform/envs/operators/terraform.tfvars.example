@@ -1,0 +1,10 @@
+# Example configuration for free domain setup
+# Copy this to terraform.tfvars and update with your values
+
+# Free domain from Freenom
+route53_zone_id = "Z1234567890ABC"  # Your Route53 Zone ID
+ingress_hostname = "innovatemart.tk"  # Your free domain (.tk, .ml, .ga, .cf)
+manage_ui_ingress = true
+
+# Optional: Disable ALB to save costs (use NodePort instead)
+# manage_ui_ingress = false

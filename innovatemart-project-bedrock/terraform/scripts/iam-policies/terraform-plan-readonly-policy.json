@@ -1,0 +1,131 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "EC2ReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:Describe*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "EKSReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "eks:Describe*",
+                "eks:List*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "IAMReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "iam:Get*",
+                "iam:List*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SecretsManagerReadOnlyScoped",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:DescribeSecret",
+                "secretsmanager:GetResourcePolicy",
+                "secretsmanager:ListSecrets",
+                "secretsmanager:ListSecretVersionIds",
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": [
+                "arn:aws:secretsmanager:us-east-1:123456789101:secret:retail/catalog-*",
+                "arn:aws:secretsmanager:us-east-1:123456789101:secret:retail/orders-*",
+                "arn:aws:secretsmanager:us-east-1:123456789101:secret:retail/carts-*"
+            ]
+        },
+        {
+            "Sid": "DynamoDBReadOnlyCarts",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:DescribeTable",
+                "dynamodb:ListTables",
+                "dynamodb:DescribeContinuousBackups",
+                "dynamodb:DescribeTimeToLive",
+                "dynamodb:ListTagsOfResource"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:*:*:table/carts",
+                "arn:aws:dynamodb:*:*:table/carts/index/*"
+            ]
+        },
+        {
+            "Sid": "RDSReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "rds:Describe*",
+                "rds:ListTagsForResource"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudWatchLogsReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "logs:Describe*",
+                "logs:Get*",
+                "logs:FilterLogEvents"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudWatchMetricsReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:Get*",
+                "cloudwatch:List*",
+                "cloudwatch:Describe*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ACMReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "acm:ListCertificates",
+                "acm:DescribeCertificate",
+                "acm:GetCertificate"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ACMListTagsForCertificate",
+              "Effect": "Allow",
+            "Action": [
+                "acm:ListCertificates",
+                "acm:DescribeCertificate",
+                "acm:GetCertificate",
+                "acm:ListTagsForCertificate"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Route53ReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "route53:List*",
+                "route53:Get*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "IAMTagging",
+            "Effect": "Allow",
+            "Action": [
+                "iam:TagUser",
+                "iam:UntagUser",
+                "iam:ListUserTags"
+            ],
+            "Resource": "arn:aws:iam::123456789101:user/*"
+        }
+    ]
+}
