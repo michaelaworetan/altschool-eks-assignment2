@@ -225,6 +225,19 @@ EOF
 terraform apply
 ```
 
+## Clean Up
+
+When you're done testing:
+```bash
+# Destroy infrastructure
+cd terraform/envs/sandbox
+terraform destroy
+
+# Clean up state storage
+cd ../../state-bootstrap
+terraform destroy
+```
+
 ## Future Enhancements
 
 - **CI/CD Pipeline**: GitHub Actions workflows (stored in backup/ directory)
@@ -239,18 +252,4 @@ terraform apply
 **Base Application:** AWS Retail Store Sample (Enhanced & Customized)
 
 This project demonstrates modern cloud-native development practices and serves as a reference implementation for production-grade microservices on AWS EKS.
-
-## Clean Up
-
-When you're done testing:
-```bash
-# Destroy infrastructure
-cd terraform/envs/sandbox
-terraform destroy
-
-# Clean up state storage
-cd ../../state-bootstrap
-terraform destroy
-```
-
-This setup has been tested extensively and provides a solid foundation for cloud-native applications on AWS.
+# CI/CD Test
