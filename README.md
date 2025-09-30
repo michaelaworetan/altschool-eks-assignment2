@@ -116,6 +116,15 @@ kubectl logs -n retail-store deployment/ui
 
 ## Application Access
 
+**Access via Custom Domain (Free):**
+```bash
+# Primary access with custom domain
+https://innovatemarts.publicvm.com
+
+# Check domain resolution
+nslookup innovatemarts.publicvm.com
+```
+
 **Access via Application Load Balancer:**
 ```bash
 # Get ALB DNS name
@@ -128,6 +137,14 @@ kubectl get ingress -n retail-store
 # Check ALB in AWS Console
 aws elbv2 describe-load-balancers --region eu-west-1
 ```
+
+**Free Domain Setup:**
+I used [FreeDomain](https://freedomain.one) to obtain `innovatemarts.publicvm.com` at no cost:
+1. Registered at freedomain.one
+2. Selected `publicvm.com` as base domain
+3. Created subdomain `innovatemarts`
+4. Added CNAME record pointing to ALB DNS
+5. Configured ALB ingress for custom domain
 
 **Example ALB DNS:**
 ```
@@ -188,9 +205,28 @@ kubectl describe clustersecretstore innovatemart-cluster-secret-store
 - **Resource Monitoring**: Container CPU and memory usage tracking
 - **Infrastructure Monitoring**: EKS cluster metrics and ALB performance metrics
 
+## Domain & SSL Implementation
+
+**Free Domain Service:**
+- **Provider**: FreeDomain (freedomain.one)
+- **Domain**: `innovatemarts.publicvm.com`
+- **Cost**: Free subdomain service
+- **DNS Management**: External CNAME pointing to ALB
+- **SSL**: AWS Certificate Manager (ACM) for HTTPS
+
+**Configuration:**
+```bash
+# Configure domain in operators
+cd terraform/envs/operators
+cat > terraform.tfvars << EOF
+ingress_hostname = "innovatemarts.publicvm.com"
+manage_ui_ingress = true
+EOF
+terraform apply
+```
+
 ## Future Enhancements
 
-- **SSL/TLS**: Custom domain with Route53 and ACM certificate integration
 - **CI/CD Pipeline**: GitHub Actions workflows (stored in backup/ directory)
 - **Multi-Environment**: Production and staging environment configurations
 - **Monitoring Stack**: Prometheus and Grafana integration
