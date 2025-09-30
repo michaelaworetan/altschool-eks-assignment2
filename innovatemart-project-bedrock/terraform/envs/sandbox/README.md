@@ -10,17 +10,6 @@ Default backend is defined in `backend.tf`:
 - region: `eu-west-1`
 - dynamodb_table: `terraform-locks`
 
-<!-- Override with `backend.hcl` (copy from `backend.hcl.example`):
-
-```hcl
-bucket         = "innovatemart-terraform-state"
-key            = "sandbox/terraform.tfstate"
-region         = "eu-west-1"
-dynamodb_table = "terraform-locks"
-encrypt        = true
-# Optional
-# profile        = "your-admin-sso"
-``` -->
 
 Initialize with overrides:
 
