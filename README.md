@@ -1,39 +1,41 @@
-# InnovateMart Project Bedrock - Enhanced Cloud Platform
+# InnovateMart Project Bedrock 
 
 **Project Type:** Cloud-Native E-commerce Infrastructure  
 **Region:** EU-West-1 (Ireland)
 
 ## What I Built
 
-I took the AWS retail store sample application and completely redesigned the infrastructure to be cost-effective and production-ready. After working with various cloud platforms, I wanted to create something that demonstrates modern DevOps practices while keeping costs under control.
+I took the AWS retail store sample application and built a production-grade infrastructure using modern cloud-native practices. This demonstrates implementation with proper load balancing, security, and scalability.
 
-The result is a fully functional e-commerce platform running on Amazon EKS that costs less than $10/month to operate.
+The result is a fully functional e-commerce platform running on Amazon EKS with Application Load Balancer integration.
 
-## My Implementation Journey
+## My Implementation
 
 ### Infrastructure Decisions I Made
-- **ARM-based instances** (t4g.small) - Discovered these are 40% cheaper than x86 equivalents
-- **Micro RDS instances** - Perfect for development workloads, keeps database costs minimal
-- **No backup retention** - For development environment, saves significant monthly costs
-- **Public subnets only** - Eliminates NAT Gateway costs ($45/month savings)
+- **ARM-based instances** (t4g.medium) - Optimal performance for containerized workloads
+- **Application Load Balancer** - Load balancing with health checks and auto-scaling
+- **AWS Load Balancer Controller** - Native Kubernetes integration for ALB management
+- **External Secrets Operator** - Secure integration with AWS Secrets Manager
+- **Micro RDS instances** - Right-sized databases for the workload
+- **Public subnets only** - Simplified networking for development environment
 - **EU-West-1 deployment** - Better for European users and GDPR compliance
 
-### Architecture I Designed
+### Architecture
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   React UI      │    │  Catalog Service │    │  Orders Service │
-│   (Port 8080)   │    │  (MySQL RDS)     │    │ (PostgreSQL RDS)│
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────────┐
-                    │   Shopping Carts    │
-                    │   (DynamoDB)        │
-                    └─────────────────────┘
+Internet → ALB DNS → Application Load Balancer → Target Groups → Pods
+├── UI Pod (React) → Internal Services
+├── Catalog Pod → MySQL RDS
+├── Orders Pod → PostgreSQL RDS
+└── Carts Pod → DynamoDB
+
+Supporting Infrastructure:
+├── AWS Load Balancer Controller (Kubernetes Ingress → ALB)
+├── External Secrets Operator (AWS Secrets Manager → K8s Secrets)
+├── IRSA (IAM Roles for Service Accounts)
+└── VPC with Public Subnets
 ```
 
-## How I Organized the Code
+## Code Structure
 ```
 innovatemart-bedrock/
 ├── terraform/
@@ -47,133 +49,114 @@ innovatemart-bedrock/
 └── backup/github-workflows/     # CI/CD (stored for later)
 ```
 
-## Deployment Process I Follow
+## Deployment Process
 
-### Initial Setup (One-time)
+### Initial Setup
 ```bash
 # 1. Configure AWS credentials
 aws configure
 # Region: eu-west-1
 
-# 2. Get free domain from DuckDNS
-# Visit duckdns.org, create account, register domain (e.g., innovatemarts)
-# Note your token and domain name
-
-# 3. Bootstrap state management
+# 2. Bootstrap state management
 cd innovatemart-bedrock/terraform/state-bootstrap
 terraform init && terraform apply
 
-# 4. Deploy core infrastructure
+# 3. Deploy core infrastructure (EKS, RDS, DynamoDB)
 cd ../envs/sandbox
 terraform init && terraform apply
+# Wait 15-20 minutes for EKS cluster
 
-# 5. Configure NodePort with DuckDNS
+# 4. Deploy ALB Controller and operators
 cd ../operators
 cat > terraform.tfvars << EOF
-duckdns_token = "your_duckdns_token_here"
-duckdns_domain = "innovatemarts"
-manage_ui_ingress = false
+cluster_name = "innovatemart-sandbox"
+aws_region = "eu-west-1"
+manage_ui_ingress = true
 EOF
 terraform init && terraform apply
 
-# 6. Deploy applications
-cd ../../../scripts
-./deploy-app.sh
+# 5. Configure kubectl
+aws eks update-kubeconfig --region eu-west-1 --name innovatemart-sandbox
 
-# 7. Deploy automatic DNS updater (optional)
-kubectl apply -f k8s/base/cronjobs/duckdns-updater.yaml
+# 6. Deploy applications
+cd ../../
+kubectl apply -f k8s/base/namespaces/retail-store.yaml
+kubectl apply -f k8s/operators/external-secrets/clustersecretstore.yaml
+kubectl apply -f k8s/base/config/external-secrets/
+kubectl apply -f k8s/base/services/
+kubectl apply -f k8s/base/deployments/
 ```
 
-### Daily Operations
+### Commands
 ```bash
 # Access the cluster
 aws eks update-kubeconfig --region eu-west-1 --name innovatemart-sandbox
 
 # Check application status
 kubectl get pods -n retail-store
-kubectl get services -n retail-store
+kubectl get ingress -n retail-store
+
+# Get application URL
+ALB_DNS=$(kubectl get ingress ui-alb-ingress -n retail-store -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+echo "Application URL: http://$ALB_DNS"
 
 # View application logs
 kubectl logs -n retail-store deployment/ui
 ```
 
-## Key Features I Implemented
+## Key Features
 
-✅ **Cost Optimization** - Single ARM node, micro databases, no unnecessary backups  
-✅ **Security First** - VPC isolation, RBAC, encrypted secrets, least-privilege IAM  
+✅ **Load Balancing** - AWS Application Load Balancer with health checks  
+✅ **Kubernetes Native** - AWS Load Balancer Controller for seamless ALB integration  
+✅ **Security** - VPC isolation, RBAC, encrypted secrets, least-privilege IAM  
 ✅ **Infrastructure as Code** - Everything defined in Terraform with remote state  
-✅ **Centralized Configuration** - Single YAML file controls all naming and settings  
-✅ **Production Patterns** - Health checks, proper resource limits, external secrets  
-✅ **Developer Experience** - Read-only access, clear documentation, easy deployment
+✅ **External Secrets Management** - AWS Secrets Manager integration via operators  
+✅ **Production Patterns** - Health checks, proper resource limits, IRSA authentication  
+✅ **Scalable Architecture** - Ready for horizontal pod autoscaling and multi-node clusters
 
 ## Application Access
 
-**Access via DuckDNS domain:**
+**Access via Application Load Balancer:**
 ```bash
-# Primary access method
-http://innovatemarts.duckdns.org:30080
+# Get ALB DNS name
+ALB_DNS=$(kubectl get ingress ui-alb-ingress -n retail-store -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+echo "Application URL: http://$ALB_DNS"
 
-# Check if domain resolves correctly
-nslookup innovatemarts.duckdns.org
+# Check ingress status
+kubectl get ingress -n retail-store
 
-# Get NodePort details
-kubectl get service ui-nodeport -n retail-store
-
-# Direct node access (backup)
-kubectl get nodes -o wide
-# Access: http://[NODE-IP]:30080
+# Check ALB in AWS Console
+aws elbv2 describe-load-balancers --region eu-west-1
 ```
 
-**Update DuckDNS manually (if needed):**
-```bash
-# Get current node IP
-NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
-
-# Update DuckDNS
-curl "https://www.duckdns.org/update?domains=innovatemarts&token=YOUR_TOKEN&ip=$NODE_IP"
-
-# Or use the script
-DUCKDNS_TOKEN="your_token" ./scripts/update-duckdns.sh
+**Example ALB DNS:**
 ```
-
-## Technical Choices Explained
-
-### Why ARM Instances?
-After testing both x86 and ARM instances, I found ARM provides identical performance for web workloads at 40% lower cost. The t4g.small handles all four microservices comfortably.
-
-### Why Single Node?
-For development and demo purposes, a single node is sufficient. The configuration includes auto-scaling settings that can be enabled for production workloads.
-
-### Why EU-West-1?
-- GDPR compliance for European data
-- Lower latency for EU users
-- Competitive pricing compared to US regions
-- Good availability zone distribution
+http://k8s-retailst-uialbingr-1234567890-123456789.eu-west-1.elb.amazonaws.com
+```
 
 ## Troubleshooting Common Issues
 
-**Domain not resolving:**
+**ALB not accessible:**
 ```bash
-# Check DNS resolution
-nslookup innovatemarts.duckdns.org
+# Check ingress status
+kubectl describe ingress ui-alb-ingress -n retail-store
 
-# Update DuckDNS manually
-NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
-curl "https://www.duckdns.org/update?domains=innovatemarts&token=YOUR_TOKEN&ip=$NODE_IP"
+# Check ALB controller logs
+kubectl logs -n kube-system deployment/aws-load-balancer-controller
 
-# Check automatic updater
-kubectl get cronjobs -n retail-store
-kubectl logs -n retail-store job/duckdns-updater-[timestamp]
+# Verify ALB exists in AWS
+aws elbv2 describe-load-balancers --region eu-west-1
 ```
 
-**NodePort not accessible:**
+**Application returning 500 errors:**
 ```bash
-# Check security group allows port 30080
-SG_ID=$(aws ec2 describe-instances --filters "Name=tag:kubernetes.io/cluster/innovatemart-sandbox,Values=owned" --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' --output text)
-aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 30080 --cidr 0.0.0.0/0
+# Check all pods are running
+kubectl get pods -n retail-store
 
-# Check service
-kubectl get service ui-nodeport -n retail-store
+# Check service connectivity
+kubectl exec -n retail-store deployment/ui -- curl http://catalog-svc:80/health
+kubectl exec -n retail-store deployment/ui -- curl http://orders-svc:80/actuator/health
+kubectl exec -n retail-store deployment/ui -- curl http://carts-svc:80/actuator/health
 ```
 
 **Pods stuck in Pending state:**
@@ -191,24 +174,28 @@ kubectl describe clustersecretstore innovatemart-cluster-secret-store
 ## Security Implementation
 
 - **Network Security**: VPC with security groups restricting database access to VPC CIDR only
-- **Identity & Access**: OIDC for service accounts, IAM roles with least-privilege policies
+- **Identity & Access**: OIDC for service accounts, IAM roles with least-privilege policies (IRSA)
 - **Secrets Management**: AWS Secrets Manager integration via External Secrets Operator
+- **Load Balancer Security**: ALB with proper security group configurations
 - **Container Security**: Non-root users, read-only filesystems, dropped Linux capabilities
-- **Kubernetes RBAC**: Read-only developer access, service-specific permissions
+- **Kubernetes RBAC**: Service-specific permissions and namespace isolation
 
 ## Monitoring & Operations
 
 - **Health Monitoring**: Kubernetes readiness and liveness probes on all services
+- **Load Balancer Monitoring**: ALB health checks and target group monitoring
 - **Centralized Logging**: CloudWatch integration for application and system logs
 - **Resource Monitoring**: Container CPU and memory usage tracking
-- **Cost Tracking**: Resource tagging for cost allocation and optimization
+- **Infrastructure Monitoring**: EKS cluster metrics and ALB performance metrics
 
 ## Future Enhancements
 
+- **SSL/TLS**: Custom domain with Route53 and ACM certificate integration
 - **CI/CD Pipeline**: GitHub Actions workflows (stored in backup/ directory)
 - **Multi-Environment**: Production and staging environment configurations
 - **Monitoring Stack**: Prometheus and Grafana integration
-- **Backup Strategy**: Automated database backups for production use
+- **Auto Scaling**: Horizontal Pod Autoscaler and Cluster Autoscaler
+- **Multi-AZ**: High availability across multiple availability zones
 
 ## License & Attribution
 

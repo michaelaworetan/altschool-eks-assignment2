@@ -61,17 +61,3 @@ variable "sandbox_state_role_arn" {
   type        = string
   default     = null
 }
-
-# DuckDNS Configuration
-variable "duckdns_token" {
-  description = "DuckDNS token for dynamic DNS updates"
-  type        = string
-  default     = null
-  sensitive   = true
-}
-
-variable "duckdns_domain" {
-  description = "DuckDNS domain name (without .duckdns.org)"
-  type        = string
-  default     = null
-}

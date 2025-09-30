@@ -26,6 +26,8 @@ spec:
           ports:
             - containerPort: 8080
           env:
+            - name: AWS_REGION
+              value: "eu-west-1"
             - name: RETAIL_UI_ENDPOINTS_CATALOG
               value: "http://catalog-svc"
             - name: RETAIL_UI_ENDPOINTS_CARTS
